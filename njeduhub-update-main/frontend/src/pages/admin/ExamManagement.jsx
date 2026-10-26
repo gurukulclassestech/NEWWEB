@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Pencil, Trash2, Eye, Save, Rocket, ArrowLeft, FileText, ExternalLink, CheckCheck, XCircle } from 'lucide-react';
@@ -66,20 +66,20 @@ const ExamManagement = ({ mode = 'list', examId = null }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const loadExams = async () => {
+  const loadExams = useCallback(async () => {
     try {
       const data = await api.list('admin/exams');
       setExams(Array.isArray(data) ? data : []);
     } catch (e) {
       toast({ title: 'Failed to load exams', description: e?.response?.data?.detail || e?.message || 'Could not fetch exams.' });
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     if (mode === 'list') {
       loadExams();
     }
-  }, [mode]);
+  }, [mode, loadExams]);
 
   useEffect(() => {
     if (mode === 'edit' && examId) {

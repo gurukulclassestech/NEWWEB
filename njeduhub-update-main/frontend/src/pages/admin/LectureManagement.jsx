@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Pencil, Trash2, Eye, Save, Rocket, ArrowLeft, PlayCircle, ExternalLink, CheckCheck, XCircle } from 'lucide-react';
@@ -71,7 +71,7 @@ const LectureManagement = ({ mode = 'list', lectureId = null }) => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const loadLectures = async () => {
+  const loadLectures = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/admin/lectures`, {
         headers: { Authorization: `Bearer ${getAuthToken()}` },
@@ -80,13 +80,13 @@ const LectureManagement = ({ mode = 'list', lectureId = null }) => {
     } catch (e) {
       toast({ title: 'Failed to load lectures', description: e?.response?.data?.detail || e?.message || 'Could not fetch lectures.' });
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     if (mode === 'list') {
       loadLectures();
     }
-  }, [mode]);
+  }, [mode, loadLectures]);
 
   useEffect(() => {
     if (mode === 'edit' && lectureId) {

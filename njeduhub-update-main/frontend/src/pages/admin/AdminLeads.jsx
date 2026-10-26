@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import api from '../../api';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -66,7 +66,7 @@ const AdminLeads = ({ path }) => {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.list(path);
@@ -75,8 +75,8 @@ const AdminLeads = ({ path }) => {
       const status = e?.response?.status;
       toast({ title: status === 401 ? 'Session expired' : 'Could not load', description: status === 401 ? 'Please sign in again.' : e?.message });
     } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [path]);
+  }, [path, toast]);
+  useEffect(() => { load(); }, [load]);
 
   const filtered = rows.filter((r) =>
     (status === 'all' || r.status === status) &&

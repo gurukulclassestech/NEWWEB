@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import api from '../../api';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -180,15 +180,15 @@ const AdminContent = ({ path }) => {
     );
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const result = await api.list(path);
       const normalized = Array.isArray(result) ? result : result ? [result] : [];
       setRows(normalized.filter(Boolean));
     } finally { setLoading(false); }
-  };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [path]);
+  }, [path]);
+  useEffect(() => { load(); }, [load]);
 
   const save = async () => {
     if (path === 'site-settings') {
