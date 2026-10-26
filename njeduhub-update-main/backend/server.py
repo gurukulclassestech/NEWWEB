@@ -18,7 +18,10 @@ except Exception:
 
 ROOT_DIR = Path(__file__).parent
 LOCAL_DB_DIR = ROOT_DIR / 'local_db'
-LOCAL_DB_DIR.mkdir(exist_ok=True)
+try:
+    LOCAL_DB_DIR.mkdir(exist_ok=True)
+except OSError:
+    pass
 
 class LocalCursor:
     def __init__(self, collection, query=None):
@@ -112,8 +115,24 @@ class LocalDatabase:
     def __init__(self, prefix='gurukulclasses'):
         self.prefix = prefix
         self.path = LOCAL_DB_DIR / f'{prefix}.json'
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._write_enabled = self._can_write()
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
         self._data = self._read()
+
+    def _can_write(self):
+        if os.environ.get('VERCEL'):
+            return False
+        try:
+            probe = self.path.with_suffix('.write-test')
+            with open(probe, 'w', encoding='utf-8') as fh:
+                fh.write('{}')
+            probe.unlink(missing_ok=True)
+            return True
+        except Exception:
+            return False
 
     def _read(self):
         if not self.path.exists():
@@ -128,10 +147,15 @@ class LocalDatabase:
             return {}
 
     def _save(self):
+        if not self._write_enabled:
+            return
         tmp_path = self.path.with_suffix(f'{self.path.suffix}.tmp')
-        with open(tmp_path, 'w', encoding='utf-8') as fh:
-            json.dump(self._data, fh, ensure_ascii=False, indent=2)
-        tmp_path.replace(self.path)
+        try:
+            with open(tmp_path, 'w', encoding='utf-8') as fh:
+                json.dump(self._data, fh, ensure_ascii=False, indent=2)
+            tmp_path.replace(self.path)
+        except OSError:
+            self._write_enabled = False
 
     def __getattr__(self, name):
         return self[name]
@@ -220,6 +244,22 @@ def strip_id(doc: dict) -> dict:
     doc.pop('_id', None)
     doc.pop('password_hash', None)
     return doc
+
+
+def _normalise_ts_field(doc: dict, *keys: str) -> str:
+    for key in keys:
+        value = doc.get(key)
+        if value not in (None, ''):
+            return str(value)
+    return ''
+
+
+def _sort_by_created_desc(docs: List[dict]) -> List[dict]:
+    return sorted(
+        docs,
+        key=lambda doc: _normalise_ts_field(doc, 'createdAt', 'created_at'),
+        reverse=True,
+    )
 
 # ---------- Models ----------
 LeadStatus = Literal['new', 'contacted', 'enrolled', 'lost']
@@ -516,8 +556,12 @@ def _validate_exam_record(payload: dict) -> dict:
     data['course'] = data['course'].strip()
     if 'id' not in data or not data['id']:
         data['id'] = str(uuid.uuid4())
+    created_now = data.get('created_at') or data.get('createdAt') or now_iso()
+    updated_now = data.get('updated_at') or data.get('updatedAt') or now_iso()
+    data['created_at'] = created_now
+    data['createdAt'] = created_now
+    data['updated_at'] = updated_now
     data['updatedAt'] = now_iso()
-    data.setdefault('createdAt', now_iso())
     return data
 
 
@@ -564,25 +608,29 @@ def _validate_lecture_record(payload: dict) -> dict:
     data['subject'] = data['subject'].strip()
     if 'id' not in data or not data['id']:
         data['id'] = str(uuid.uuid4())
+    created_now = data.get('created_at') or data.get('createdAt') or now_iso()
+    updated_now = data.get('updated_at') or data.get('updatedAt') or now_iso()
+    data['created_at'] = created_now
+    data['createdAt'] = created_now
+    data['updated_at'] = updated_now
     data['updatedAt'] = now_iso()
-    data.setdefault('createdAt', now_iso())
     return data
 
 # ---------- Public/exam endpoints ----------
 @api.get('/exams')
 async def list_exams_public():
-    docs = await db.exams.find().sort('created_at', -1).to_list(1000)
-    return [strip_id(d) for d in docs]
+    docs = await db.exams.find().to_list(1000)
+    return [strip_id(d) for d in _sort_by_created_desc(docs)]
 
 @api.get('/exams/published')
 async def list_published_exams():
-    docs = await db.exams.find({'status': 'published'}).sort('created_at', -1).to_list(1000)
-    return [strip_id(d) for d in docs]
+    docs = await db.exams.find({'status': 'published'}).to_list(1000)
+    return [strip_id(d) for d in _sort_by_created_desc(docs)]
 
 @api.get('/admin/exams')
 async def list_admin_exams(_: str = Depends(require_admin)):
-    docs = await db.exams.find().sort('created_at', -1).to_list(1000)
-    return [strip_id(d) for d in docs]
+    docs = await db.exams.find().to_list(1000)
+    return [strip_id(d) for d in _sort_by_created_desc(docs)]
 
 @api.get('/admin/exams/{item_id}')
 async def get_admin_exam(item_id: str, _: str = Depends(require_admin)):
@@ -626,18 +674,18 @@ async def delete_admin_exam(item_id: str, _: str = Depends(require_admin)):
 # ---------- Public/video lecture endpoints ----------
 @api.get('/lectures')
 async def list_lectures_public():
-    docs = await db.lectures.find().sort('created_at', -1).to_list(1000)
-    return [strip_id(d) for d in docs]
+    docs = await db.lectures.find().to_list(1000)
+    return [strip_id(d) for d in _sort_by_created_desc(docs)]
 
 @api.get('/lectures/published')
 async def list_published_lectures():
-    docs = await db.lectures.find({'status': 'published'}).sort('created_at', -1).to_list(1000)
-    return [strip_id(d) for d in docs]
+    docs = await db.lectures.find({'status': 'published'}).to_list(1000)
+    return [strip_id(d) for d in _sort_by_created_desc(docs)]
 
 @api.get('/admin/lectures')
 async def list_admin_lectures(_: str = Depends(require_admin)):
-    docs = await db.lectures.find().sort('created_at', -1).to_list(1000)
-    return [strip_id(d) for d in docs]
+    docs = await db.lectures.find().to_list(1000)
+    return [strip_id(d) for d in _sort_by_created_desc(docs)]
 
 @api.get('/admin/lectures/{item_id}')
 async def get_admin_lecture(item_id: str, _: str = Depends(require_admin)):
@@ -684,8 +732,8 @@ def build_crud(path: str, collection: str, model):
 
     @api.get(f'/{path}')
     async def list_items():
-        docs = await db[collection].find().sort('created_at', -1).to_list(1000)
-        return [strip_id(d) for d in docs]
+        docs = await db[collection].find().to_list(1000)
+        return [strip_id(d) for d in _sort_by_created_desc(docs)]
 
     @api.post(f'/{path}')
     async def create_item(item: model, _: str = Depends(require_admin)):
@@ -746,8 +794,8 @@ def build_leads(path: str, coll: str, model):
     @api.get(f'/{path}', name=f'list_{path}')
     async def lst(status: Optional[str] = None, _: str = Depends(require_admin)):
         q = {} if not status else {'status': status}
-        docs = await db[coll].find(q).sort('created_at', -1).to_list(2000)
-        return [strip_id(d) for d in docs]
+        docs = await db[coll].find(q).to_list(2000)
+        return [strip_id(d) for d in _sort_by_created_desc(docs)]
 
     @api.patch(f'/{path}/' + '{item_id}', name=f'update_{path}')
     async def upd(item_id: str, body: StatusUpdate, _: str = Depends(require_admin)):
@@ -775,7 +823,8 @@ def build_leads(path: str, coll: str, model):
         from auth import decode_token
         if not token or not decode_token(token):
             raise HTTPException(status_code=401, detail='Invalid or missing token')
-        docs = await db[coll].find().sort('created_at', -1).to_list(5000)
+        docs = await db[coll].find().to_list(5000)
+        docs = _sort_by_created_desc(docs)
         if not docs:
             return StreamingResponse(io.StringIO('No data'), media_type='text/csv')
         fields = [k for k in docs[0].keys() if k not in ('_id', 'password_hash')]

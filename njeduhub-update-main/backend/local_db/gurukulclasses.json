@@ -11,6 +11,12 @@
     {
       "username": "persisted-admin",
       "password_hash": "hash"
+    },
+    {
+      "id": "b974035c-b87b-4ffc-bfe3-430e01fedbf8",
+      "username": "admin",
+      "password_hash": "$2b$12$KKjM.ci8kyZVhPGkAnNR2uVEAiHgLWePd.tOujKYgY5TSXwfrATxG",
+      "created_at": "2026-10-26T13:37:49.896595"
     }
   ],
   "site_settings": [],
@@ -20,5 +26,35 @@
   "news": [],
   "toppers": [],
   "faculty": [],
-  "testimonials": []
+  "testimonials": [],
+  "exams": [
+    {
+      "id": "older",
+      "examName": "Older Exam",
+      "className": "Class 10",
+      "course": "Foundation",
+      "examDate": "2024-01-10",
+      "startTime": "09:00",
+      "endTime": "10:00",
+      "durationMinutes": 60,
+      "classplusUrl": "https://example.com/older",
+      "status": "published",
+      "createdAt": "2024-01-01T00:00:00",
+      "updatedAt": "2024-01-01T00:00:00"
+    },
+    {
+      "id": "newer",
+      "examName": "Newer Exam",
+      "className": "Class 12",
+      "course": "JEE",
+      "examDate": "2025-01-10",
+      "startTime": "09:00",
+      "endTime": "10:00",
+      "durationMinutes": 60,
+      "classplusUrl": "https://example.com/newer",
+      "status": "published",
+      "createdAt": "2025-01-01T00:00:00",
+      "updatedAt": "2025-01-01T00:00:00"
+    }
+  ]
 }
