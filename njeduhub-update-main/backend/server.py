@@ -86,7 +86,34 @@ class LocalCollection:
         if index is None:
             if upsert:
                 doc = {}
+                ```python
+    async def update_one(self, query, update, upsert=False):
+        items = self._items()
+        index = next(
+            (i for i, doc in enumerate(items)
+             if self._matches(doc, query)),
+            None
+        )
+
+        if index is None:
+            if upsert:
+                doc = {}
                 if '$set' in update:
+                    doc.update(update['$set'])
+                items.append(doc)
+                self._save_items(items)
+                return {'ok': True}
+            return {'ok': True}
+
+        item = items[index]
+
+        if '$set' in update:
+            item.update(update['$set'])
+
+        items[index] = item
+        self._save_items(items)
+        return {'ok': True}
+```
                     doc.update(update['$set'])
                 items.append(doc)
                 self._save_items(items)
