@@ -62,8 +62,8 @@ class TokenOut(BaseModel):
 
 # ------- DB helpers -------
 async def ensure_default_admin(db):
-    """Seed a default admin (admin / admin@123) on first run."""
-    if await db.admins.count_documents({}) == 0:
+    """Ensure the default admin account exists even if other admin rows already exist."""
+    if await db.admins.find_one({'username': 'admin'}) is None:
         await db.admins.insert_one({
             'id': str(uuid.uuid4()),
             'username': 'admin',

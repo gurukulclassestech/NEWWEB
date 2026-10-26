@@ -3,6 +3,14 @@
     {
       "username": "persisted-admin",
       "password_hash": "hash"
+    },
+    {
+      "username": "persisted-admin",
+      "password_hash": "hash"
+    },
+    {
+      "username": "persisted-admin",
+      "password_hash": "hash"
     }
   ],
   "site_settings": [],

@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 
+from backend.auth import ensure_default_admin
 from backend.server import LocalDatabase
 
 
@@ -59,3 +60,15 @@ async def test_local_database_reuses_same_instance_per_prefix():
 
     assert stored is not None
     assert stored['username'] == 'persisted-admin'
+
+
+@pytest.mark.asyncio
+async def test_ensure_default_admin_creates_default_user_even_if_db_has_other_records():
+    db = LocalDatabase(prefix='test_default_admin_seed')
+    await db.admins.insert_one({'username': 'other-admin', 'password_hash': 'hash'})
+
+    await ensure_default_admin(db)
+
+    stored = await db.admins.find_one({'username': 'admin'})
+    assert stored is not None
+    assert stored['username'] == 'admin'
