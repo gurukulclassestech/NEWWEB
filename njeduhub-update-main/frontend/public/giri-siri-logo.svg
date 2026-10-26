@@ -1,0 +1,14 @@
+<svg width="1500" height="420" viewBox="0 0 1500 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Giri Sir's Gurukul logo">
+  <rect width="1500" height="420" fill="#F3F4F6"/>
+  <text x="42" y="84" font-size="64" font-weight="700" fill="#0F2A5C" font-family="Segoe UI, Arial, sans-serif">Giri Sir&apos;s</text>
+  <text x="8" y="310" font-size="290" font-weight="900" fill="#0F2A5C" font-family="Segoe UI, Arial, sans-serif" letter-spacing="-12">Gurukul</text>
+
+  <g fill="#0F2A5C">
+    <path d="M1040 112L1090 118L1123 149L1097 196L1046 203L1016 171L1040 112Z" opacity="0.14"/>
+    <path d="M1028 122L1076 98L1120 123L1107 180L1052 188L1018 162L1028 122Z" opacity="0.12"/>
+    <path d="M1092 128L1154 86L1198 126L1177 182L1110 191L1083 157L1092 128Z"/>
+    <path d="M1108 136L1120 121L1139 138L1126 157Z" fill="#F5B921"/>
+  </g>
+
+  <text x="52" y="378" font-size="62" font-weight="800" fill="#0F2A5C" font-family="Segoe UI, Arial, sans-serif" letter-spacing="1">NEET IIT-JEE Foundation</text>
+</svg>

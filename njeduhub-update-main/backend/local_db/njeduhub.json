@@ -1,0 +1,197 @@
+{
+  "admins": [
+    {
+      "id": "36464da6-5c84-4b9c-a286-9ba0a9f0bab0",
+      "username": "admin",
+      "password_hash": "$2b$12$weTaX4cjgaPTV/7iyWCmT.eJScPK9WfDbxzjtmGKo.DWRsBGx2Ed6",
+      "created_at": "2026-10-24T15:37:23.512800"
+    }
+  ],
+  "exams": [
+    {
+      "id": "0014257d-d0e0-4d58-8383-f3d7ae0ca7e4",
+      "created_at": "2026-10-24T15:54:49.316527",
+      "examName": "Publish Test Exam",
+      "className": "11th",
+      "course": "JEE",
+      "examDate": "2026-10-24",
+      "startTime": "10:00",
+      "endTime": "23:00",
+      "durationMinutes": 60,
+      "instructions": "Test instructions",
+      "classplusUrl": "https://classplus.example.com/test",
+      "status": "published",
+      "createdAt": "2026-10-24T15:54:49.316593",
+      "updatedAt": "2026-10-24T15:54:49.319041"
+    },
+    {
+      "id": "995a7526-006d-473e-ac6f-44e9dcd8d272",
+      "created_at": "2026-10-24T15:55:01.504366",
+      "examName": "UI Save Test Exam",
+      "className": "12th",
+      "course": "NEET",
+      "examDate": "2026-11-20",
+      "startTime": "09:30",
+      "endTime": "10:30",
+      "durationMinutes": 60,
+      "instructions": "UI test instructions",
+      "classplusUrl": "https://classplus.example.com/ui-save",
+      "status": "published",
+      "createdAt": "2026-10-24T15:55:01.504388",
+      "updatedAt": "2026-10-24T15:55:01.504637"
+    },
+    {
+      "id": "745ecedb-a415-4501-a78e-988cf15bd00d",
+      "created_at": "2026-10-24T16:25:13.652929",
+      "examName": "mains",
+      "className": "11th",
+      "course": "JEE",
+      "examDate": "2026-10-25",
+      "startTime": "10:00",
+      "endTime": "11:00",
+      "durationMinutes": 60,
+      "instructions": "",
+      "classplusUrl": "https://your-classplus-test-link",
+      "status": "published",
+      "createdAt": "2026-10-24T16:25:13.655534",
+      "updatedAt": "2026-10-24T16:25:13.668463"
+    }
+  ],
+  "site_settings": [
+    {
+      "id": "51ebb897-f8ff-43e1-badb-d43a508d4fb5",
+      "created_at": "2026-10-24T16:00:09.715512",
+      "key": "site_name",
+      "value": "Giri Sir's Gurukul Classes"
+    },
+    {
+      "id": "4c46f38c-4352-4620-8dda-6697b6353011",
+      "created_at": "2026-10-24T16:00:09.726691",
+      "key": "site_tagline",
+      "value": "Inclusive Personalised JEE & NEET Coaching"
+    },
+    {
+      "id": "84d92c87-f730-4501-9769-9412cfc2db84",
+      "created_at": "2026-10-24T16:00:09.729314",
+      "key": "site_phone",
+      "value": "+91 9860968994"
+    },
+    {
+      "id": "bae24085-859a-4f6a-9457-01172febb386",
+      "created_at": "2026-10-24T16:00:09.732646",
+      "key": "site_whatsapp",
+      "value": "+91 9860968994"
+    },
+    {
+      "id": "0c60ac8a-e99c-46f7-be2b-2993613d2078",
+      "created_at": "2026-10-24T16:00:09.735457",
+      "key": "site_email",
+      "value": "gurukulclassestech@gmail.com"
+    },
+    {
+      "id": "f3a503fd-b58a-4d1b-b564-c2bb156c1038",
+      "created_at": "2026-10-24T16:00:09.738393",
+      "key": "site_address",
+      "value": "Navapute tower - In front of Satara Police Station High Court Colony , Satara Parisar. Chattrapati Sambhajinagar"
+    },
+    {
+      "id": "af05385b-e0d7-4d0e-8a55-9008c4016731",
+      "created_at": "2026-10-24T16:00:09.750973",
+      "key": "site_facebook",
+      "value": "#"
+    },
+    {
+      "id": "2b962ffc-2291-475e-9d2e-3940789878b6",
+      "created_at": "2026-10-24T16:00:09.754668",
+      "key": "site_class_portal_url",
+      "value": "#"
+    },
+    {
+      "id": "4e425a51-1441-4796-88b5-05e7664fed1e",
+      "created_at": "2026-10-24T16:00:09.757165",
+      "key": "site_logo",
+      "value": "/api/uploads/df343f961f0a4999b8e268a0cfb2630d.png"
+    },
+    {
+      "id": "5919e85c-c699-4ec8-9a61-3c7198f71714",
+      "created_at": "2026-10-24T16:00:09.759648",
+      "key": "site_exam_portal_url",
+      "value": "#"
+    },
+    {
+      "id": "eb804f58-d4d6-4f2d-bc4a-fdc83ea6c1dd",
+      "created_at": "2026-10-24T16:00:09.763329",
+      "key": "site_logo_height",
+      "value": "48"
+    },
+    {
+      "id": "00487ce8-2857-4768-b058-cfbab3ac6ecd",
+      "created_at": "2026-10-24T16:00:09.767305",
+      "key": "site_logo_width",
+      "value": "48"
+    },
+    {
+      "id": "b05c2a5c-3e77-435f-bb38-cedbb69b2d55",
+      "created_at": "2026-10-24T16:00:09.779195",
+      "key": "site_linkedin",
+      "value": "#"
+    },
+    {
+      "id": "41de28e3-158d-4b39-85c5-870aa466d8e2",
+      "created_at": "2026-10-24T16:00:09.781978",
+      "key": "site_youtube",
+      "value": "#"
+    },
+    {
+      "id": "8bd1b1a1-3880-491c-9e4e-b9b2eee32898",
+      "created_at": "2026-10-24T16:00:09.784074",
+      "key": "site_twitter",
+      "value": "#"
+    },
+    {
+      "id": "149efdb0-23d4-4580-8f6e-6fea30ed5296",
+      "created_at": "2026-10-24T16:00:09.786012",
+      "key": "site_instagram",
+      "value": "#"
+    }
+  ],
+  "inquiries": [],
+  "admissions": [],
+  "scholarship": [],
+  "careers": [],
+  "courses": [],
+  "faculty": [],
+  "blogs": [],
+  "testimonials": [],
+  "toppers": [],
+  "gallery": [],
+  "news": [],
+  "results": [],
+  "banners": [],
+  "counters": [],
+  "seo": [
+    {
+      "id": "80269f2d-354e-4b47-99b3-3b2530429b2a",
+      "created_at": "2026-10-24T15:57:00.269289",
+      "key": "meta_title",
+      "value": ""
+    }
+  ],
+  "homepage_editor": [],
+  "lectures": [
+    {
+      "id": "ec1a41e4-a9b6-4cbf-bf7d-f8a14a62e277",
+      "created_at": "2026-10-24T16:40:31.498301",
+      "title": "akanlan",
+      "className": "11th",
+      "subject": "Physics",
+      "youtubeUrl": "https://www.youtube.com/watch?v=BK2pzY9sT0k",
+      "description": "",
+      "thumbnailUrl": "https://img.youtube.com/vi/BK2pzY9sT0k/hqdefault.jpg",
+      "videoId": "BK2pzY9sT0k",
+      "status": "published",
+      "createdAt": "2026-10-24T16:40:31.498950",
+      "updatedAt": "2026-10-24T16:40:31.501045"
+    }
+  ]
+}

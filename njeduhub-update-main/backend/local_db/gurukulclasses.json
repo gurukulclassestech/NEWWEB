@@ -1,0 +1,16 @@
+{
+  "admins": [
+    {
+      "username": "persisted-admin",
+      "password_hash": "hash"
+    }
+  ],
+  "site_settings": [],
+  "banners": [],
+  "counters": [],
+  "courses": [],
+  "news": [],
+  "toppers": [],
+  "faculty": [],
+  "testimonials": []
+}

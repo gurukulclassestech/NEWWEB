@@ -1,0 +1,27 @@
+<svg width="920" height="320" viewBox="0 0 920 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .brand { font-family: 'Segoe UI', Arial, sans-serif; font-weight: 900; letter-spacing: -8px; }
+      .small { font-family: 'Segoe UI', Arial, sans-serif; font-weight: 700; letter-spacing: 0px; }
+    </style>
+  </defs>
+
+  <text x="24" y="84" class="small" font-size="30" fill="#0F2A5C">Giri Sir&apos;s</text>
+
+  <g transform="translate(0,18)">
+    <text x="0" y="160" class="brand" font-size="200" fill="#0F2A5C">Gurukul</text>
+
+    <g transform="translate(282,90)">
+      <path d="M132 12C116 0 96 -2 78 5C40 18 11 57 0 95C-6 118 -5 141 7 162C19 183 42 199 68 201L100 203C120 204 138 214 150 231L165 251L179 222C192 193 193 167 182 139L170 110L158 131L148 110L125 68L132 12Z" fill="#0F2A5C" opacity="0.12"/>
+      <path d="M154 38L102 110L115 144L178 108L154 38Z" fill="#0F2A5C" opacity="0.15"/>
+      <path d="M121 28L166 96L145 149L91 190L99 215L180 170L205 118L188 23L121 28Z" fill="#0F2A5C"/>
+      <path d="M189 26L170 7L126 15L136 36L189 26Z" fill="#0F2A5C"/>
+      <path d="M150 83L178 132L135 156L116 107L150 83Z" fill="#F6F7F9"/>
+      <path d="M120 202L158 190C171 185 182 175 191 163L203 146C211 135 220 128 231 126L250 121L267 69L246 91L228 111L211 133L189 149L178 190L120 202Z" fill="#0F2A5C"/>
+      <path d="M105 191L63 168L65 155L101 176L105 191Z" fill="#0F2A5C"/>
+      <path d="M74 182L57 131L85 136L96 174L74 182Z" fill="#0F2A5C"/>
+    </g>
+  </g>
+
+  <text x="32" y="283" class="small" font-size="42" fill="#0F2A5C">NEET  IIT-JEE  Foundation</text>
+</svg>
