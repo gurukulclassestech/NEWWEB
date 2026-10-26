@@ -1,5 +1,13 @@
-from server import app
+```python
+import sys
+from pathlib import Path
 
-# Vercel Python runtime expects the ASGI app to be named `app`.
-# Importing the existing FastAPI app keeps the current API routes intact.
-# This file is intentionally tiny so the backend remains deployable on Vercel.
+# Locate the backend folder
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+# Allow Python to import server.py
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+# Load the existing FastAPI application
+from server import app
