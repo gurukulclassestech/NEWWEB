@@ -1,9 +1,7 @@
 import axios from 'axios';
 import { STORAGE_KEY } from './auth/AuthContext';
 
-const BASE =
-  process.env.REACT_APP_BACKEND_URL ||
-  'https://newweb-bty8-git-main-advait22.vercel.app';
+const BASE = 'https://backend-gurukul.vercel.app';
 const API = `${BASE.replace(/\/$/, '')}/api`;
 
 const http = axios.create({ baseURL: API, timeout: 20000 });
