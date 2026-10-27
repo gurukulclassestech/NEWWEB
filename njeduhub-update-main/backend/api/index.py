@@ -1,1 +1,1 @@
-app = FastAPI()
+from server import app
