@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 
-const BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+const BASE = 'https://backend-gurukul.vercel.app';
 const API = `${BASE.replace(/\/$/, '')}/api`;
 const STORAGE_KEY = 'nj_admin_auth';
 
