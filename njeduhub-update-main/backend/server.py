@@ -260,6 +260,36 @@ async def enforce_backend_expiration(request, call_next):
         )
     return await call_next(request)
 
+def _configured_expiration() -> Optional[datetime]:
+    value = os.environ.get('BACKEND_EXPIRES_AT', '').strip()
+    if not value:
+        return None
+    try:
+        expiration = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError as exc:
+        raise ValueError('BACKEND_EXPIRES_AT must be an ISO 8601 UTC timestamp') from exc
+    if expiration.tzinfo is None or expiration.utcoffset() is None:
+        raise ValueError('BACKEND_EXPIRES_AT must include a UTC timezone, such as Z')
+    return expiration.astimezone(timezone.utc)
+
+
+BACKEND_EXPIRES_AT = _configured_expiration()
+
+@app.middleware('http')
+async def enforce_backend_expiration(request, call_next):
+    if BACKEND_EXPIRES_AT and datetime.now(timezone.utc) >= BACKEND_EXPIRES_AT:
+        return JSONResponse(
+            status_code=503,
+            content={
+                'detail': (
+                    'Backend service expired at '
+                    f'{BACKEND_EXPIRES_AT.isoformat()}. Remove BACKEND_EXPIRES_AT and restart '
+                    'the backend to disable this expiration.'
+                )
+            },
+        )
+    return await call_next(request)
+
 # ---------- Helpers ----------
 def now_iso() -> str:
     return datetime.utcnow().isoformat()
@@ -927,18 +957,12 @@ async def seed_public():
 # ---------- App lifecycle ----------
 @app.on_event('startup')
 async def on_start():
-    if BACKEND_EXPIRES_AT:
-        logger.info(
-            'Backend expiration is enabled for %s (UTC). Remove BACKEND_EXPIRES_AT and restart to disable.',
-            BACKEND_EXPIRES_AT.isoformat(),
-        )
-    else:
-        logger.info('Backend expiration is disabled (BACKEND_EXPIRES_AT is not set).')
-    if os.environ.get('VERCEL'):
-        logger.warning(
-            'SQLite is running at %s on Vercel. This local file is temporary and is not shared across function instances.',
-            db.path,
-        )
+    global client, db
+    try:
+        await client.admin.command('ping')
+    except Exception as exc:
+        logger.warning('MongoDB unavailable at %s; using local in-memory fallback. Error: %s', mongo_url, exc)
+        _use_mock_db()
     await ensure_default_admin(db)
     logger.info('Default admin ensured (admin / admin@123)')
 
