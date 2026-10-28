@@ -3,27 +3,17 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os, io, csv, logging, uuid, shutil, json, base64
+import os, io, csv, logging, uuid, json, base64, sqlite3, threading
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
 from datetime import datetime, timezone
 from urllib.parse import parse_qs, urlparse
 
-try:
-    from mongomock_motor import AsyncMongoMockClient as MockAsyncMongoClient
-except Exception:
-    MockAsyncMongoClient = None
-
 ROOT_DIR = Path(__file__).parent
 LOCAL_DB_DIR = ROOT_DIR / 'local_db'
-try:
-    LOCAL_DB_DIR.mkdir(exist_ok=True)
-except OSError:
-    pass
 
-class LocalCursor:
+class SQLiteCursor:
     def __init__(self, collection, query=None):
         self.collection = collection
         self.query = query or {}
@@ -36,159 +26,181 @@ class LocalCursor:
         return self
 
     async def to_list(self, limit=None):
-        items = self.collection._items()
-        if self.query:
-            def matches(doc):
-                return all(doc.get(k) == v for k, v in self.query.items())
-            items = [doc for doc in items if matches(doc)]
+        items = self.collection._items(self.query)
         if self.sort_field is not None:
             items = sorted(items, key=lambda doc: doc.get(self.sort_field, 0), reverse=self.sort_direction < 0)
         if limit is not None:
             items = items[:limit]
         return items
 
-class LocalCollection:
+class SQLiteCollection:
     def __init__(self, database, name):
         self.database = database
         self.name = name
 
-    def _items(self):
-        return list(self.database._data.get(self.name, []))
+    def _items(self, query=None):
+        with self.database._lock:
+            rows = self.database.connection.execute(
+                'SELECT document FROM records WHERE collection = ? ORDER BY rowid',
+                (self.name,),
+            ).fetchall()
+        items = [json.loads(row['document']) for row in rows]
+        if query:
+            items = [item for item in items if self._matches(item, query)]
+        return items
 
     def _save_items(self, items):
-        self.database._data[self.name] = items
-        self.database._save()
+        with self.database._lock, self.database.connection:
+            self.database.connection.execute('DELETE FROM records WHERE collection = ?', (self.name,))
+            self.database.connection.executemany(
+                'INSERT INTO records (collection, document) VALUES (?, ?)',
+                [(self.name, json.dumps(item, ensure_ascii=False)) for item in items],
+            )
 
     def _matches(self, doc, query):
         return all(doc.get(k) == v for k, v in (query or {}).items())
 
     async def insert_one(self, doc):
-        items = self._items()
-        items.append(dict(doc))
-        self._save_items(items)
-        return {'ok': True}
+        with self.database._lock, self.database.connection:
+            cursor = self.database.connection.execute(
+                'INSERT INTO records (collection, document) VALUES (?, ?)',
+                (self.name, json.dumps(dict(doc), ensure_ascii=False)),
+            )
+            return {'inserted_id': cursor.lastrowid}
 
     async def find_one(self, query=None):
-        for doc in self._items():
-            if self._matches(doc, query or {}):
-                return dict(doc)
-        return None
+        return next(iter(self._items(query)), None)
 
     async def count_documents(self, query=None):
-        return len([doc for doc in self._items() if self._matches(doc, query or {})])
+        return len(self._items(query))
 
     def find(self, query=None):
-        return LocalCursor(self, query or {})
+        return SQLiteCursor(self, query or {})
 
     async def update_one(self, query, update, upsert=False):
-        items = self._items()
-        index = next((i for i, doc in enumerate(items) if self._matches(doc, query)), None)
-        if index is None:
-            if upsert:
-                doc = {}
-                if '$set' in update:
-                    doc.update(update['$set'])
-                items.append(doc)
-                self._save_items(items)
-                return {'ok': True}
-            return {'ok': True}
-        item = items[index]
-        if '$set' in update:
-            item.update(update['$set'])
-        if '$unset' in update:
-            for key in update['$unset']:
+        with self.database._lock, self.database.connection:
+            rows = self.database.connection.execute(
+                'SELECT rowid, document FROM records WHERE collection = ? ORDER BY rowid',
+                (self.name,),
+            ).fetchall()
+            match = next(
+                (
+                    row for row in rows
+                    if self._matches(json.loads(row['document']), query)
+                ),
+                None,
+            )
+            if match is None:
+                if not upsert:
+                    return {'matched_count': 0, 'modified_count': 0}
+                item = dict(query)
+                item.update(update.get('$set', {}))
+                for key in update.get('$unset', {}):
+                    item.pop(key, None)
+                self.database.connection.execute(
+                    'INSERT INTO records (collection, document) VALUES (?, ?)',
+                    (self.name, json.dumps(item, ensure_ascii=False)),
+                )
+                return {'matched_count': 0, 'modified_count': 0, 'upserted_id': True}
+
+            item = json.loads(match['document'])
+            item.update(update.get('$set', {}))
+            for key in update.get('$unset', {}):
                 item.pop(key, None)
-        items[index] = item
-        self._save_items(items)
-        return {'ok': True}
+            self.database.connection.execute(
+                'UPDATE records SET document = ? WHERE rowid = ?',
+                (json.dumps(item, ensure_ascii=False), match['rowid']),
+            )
+            return {'matched_count': 1, 'modified_count': 1}
 
     async def delete_one(self, query):
-        items = self._items()
-        for index, doc in enumerate(items):
-            if self._matches(doc, query):
-                items.pop(index)
-                self._save_items(items)
-                return {'ok': True}
-        return {'ok': True}
+        with self.database._lock, self.database.connection:
+            rows = self.database.connection.execute(
+                'SELECT rowid, document FROM records WHERE collection = ? ORDER BY rowid',
+                (self.name,),
+            ).fetchall()
+            match = next(
+                (
+                    row for row in rows
+                    if self._matches(json.loads(row['document']), query)
+                ),
+                None,
+            )
+            if match is None:
+                return {'deleted_count': 0}
+            self.database.connection.execute('DELETE FROM records WHERE rowid = ?', (match['rowid'],))
+            return {'deleted_count': 1}
 
-class LocalDatabase:
-    def __init__(self, prefix='gurukulclasses'):
-        self.prefix = prefix
-        self.path = LOCAL_DB_DIR / f'{prefix}.json'
-        self._write_enabled = self._can_write()
-        try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass
-        self._data = self._read()
+class SQLiteDatabase:
+    def __init__(self, path=None, legacy_path=LOCAL_DB_DIR / 'gurukulclasses.json'):
+        configured_path = path or os.environ.get('SQLITE_DB_PATH')
+        if configured_path:
+            self.path = Path(configured_path)
+        elif os.environ.get('VERCEL'):
+            self.path = Path('/tmp/gurukulclasses.sqlite3')
+        else:
+            self.path = LOCAL_DB_DIR / 'gurukulclasses.sqlite3'
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.RLock()
+        self.connection = sqlite3.connect(self.path, check_same_thread=False)
+        self.connection.row_factory = sqlite3.Row
+        self.connection.execute('PRAGMA busy_timeout = 5000')
+        self.connection.execute('PRAGMA journal_mode = WAL')
+        self.connection.execute(
+            'CREATE TABLE IF NOT EXISTS records '
+            '(collection TEXT NOT NULL, document TEXT NOT NULL)'
+        )
+        self.connection.execute(
+            'CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)'
+        )
+        self._import_legacy_json(legacy_path)
 
-    def _can_write(self):
-        if os.environ.get('VERCEL'):
-            return False
-        try:
-            probe = self.path.with_suffix('.write-test')
-            with open(probe, 'w', encoding='utf-8') as fh:
-                fh.write('{}')
-            probe.unlink(missing_ok=True)
-            return True
-        except Exception:
-            return False
-
-    def _read(self):
-        if not self.path.exists():
-            self._data = {}
-            self._save()
-            return self._data
-        try:
-            with open(self.path, 'r', encoding='utf-8') as fh:
-                data = json.load(fh)
-            return data if isinstance(data, dict) else {}
-        except Exception:
-            return {}
-
-    def _save(self):
-        if not self._write_enabled:
+    def _import_legacy_json(self, legacy_path):
+        imported = self.connection.execute(
+            "SELECT 1 FROM metadata WHERE key = 'legacy_json_imported'"
+        ).fetchone()
+        if imported:
             return
-        tmp_path = self.path.with_suffix(f'{self.path.suffix}.tmp')
-        try:
-            with open(tmp_path, 'w', encoding='utf-8') as fh:
-                json.dump(self._data, fh, ensure_ascii=False, indent=2)
-            tmp_path.replace(self.path)
-        except OSError:
-            self._write_enabled = False
+        has_records = self.connection.execute('SELECT 1 FROM records LIMIT 1').fetchone()
+        legacy_data = {}
+        if (
+            not has_records
+            and legacy_path
+            and legacy_path.is_file()
+            and legacy_path.resolve() != self.path.resolve()
+        ):
+            try:
+                with legacy_path.open('r', encoding='utf-8') as file:
+                    legacy_data = json.load(file)
+            except (OSError, json.JSONDecodeError) as exc:
+                raise RuntimeError(f'Could not import legacy database file {legacy_path}') from exc
+            if not isinstance(legacy_data, dict):
+                raise RuntimeError(f'Legacy database file {legacy_path} must contain a JSON object')
+        with self.connection:
+            for collection, items in legacy_data.items():
+                if not isinstance(items, list):
+                    continue
+                self.connection.executemany(
+                    'INSERT INTO records (collection, document) VALUES (?, ?)',
+                    [
+                        (collection, json.dumps(item, ensure_ascii=False))
+                        for item in items
+                        if isinstance(item, dict)
+                    ],
+                )
+            self.connection.execute(
+                "INSERT OR REPLACE INTO metadata (key, value) VALUES ('legacy_json_imported', '1')"
+            )
 
     def __getattr__(self, name):
         return self[name]
 
     def __getitem__(self, key):
-        if key not in self._data:
-            self._data[key] = []
-            self._save()
-        return LocalCollection(self, key)
-
-    def __contains__(self, key):
-        return key in self._data
+        return SQLiteCollection(self, key)
 
     def close(self):
-        self._save()
-
-class LocalMongoAdmin:
-    async def command(self, *args, **kwargs):
-        return {'ok': 1}
-
-class LocalMongoClient:
-    def __init__(self, db_name):
-        self.db_name = db_name
-        self.admin = LocalMongoAdmin()
-        self._db_cache = {}
-
-    def __getitem__(self, name):
-        if name not in self._db_cache:
-            self._db_cache[name] = LocalDatabase(prefix=name)
-        return self._db_cache[name]
-
-    def close(self):
-        pass
+        with self._lock:
+            self.connection.close()
 
 ROOT_DIR = Path(__file__).parent
 UPLOAD_DIR = ROOT_DIR / 'uploads'
@@ -210,24 +222,7 @@ except ImportError:  # pragma: no cover - supports running server.py directly
         ensure_default_admin, require_admin,
     )
 
-mongo_url = os.environ.get('MONGO_URL') or 'mongodb://localhost:27017'
-db_name = os.environ.get('DB_NAME') or 'gurukulclasses'
-
-
-def _use_mock_db() -> None:
-    global client, db
-    logger = logging.getLogger('gurukulclasses')
-    logging.basicConfig(level=logging.INFO)
-    logger.warning('MongoDB unavailable at %s; using local JSON fallback database.', mongo_url)
-    client = LocalMongoClient(db_name)
-    db = client[db_name]
-
-
-try:
-    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000, connectTimeoutMS=2000)
-    db = client[db_name]
-except Exception:
-    _use_mock_db()
+db = SQLiteDatabase()
 
 app = FastAPI(title='Gurukul Classes API')
 api = APIRouter(prefix='/api')
@@ -521,7 +516,7 @@ async def admin_change_password(body: ChangePasswordIn, user: str = Depends(requ
 # ---------- File Upload ----------
 @api.post('/upload')
 async def upload_image(file: UploadFile = File(...), _: str = Depends(require_admin)):
-    """Accept an image upload and return a public URL."""
+    """Accept an image upload and return its API URL."""
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(status_code=400, detail=f'Unsupported file type: {file.content_type}. Allowed: jpg, png, gif, webp, svg')
     # Read and check size
@@ -932,7 +927,6 @@ async def seed_public():
 # ---------- App lifecycle ----------
 @app.on_event('startup')
 async def on_start():
-    global client, db
     if BACKEND_EXPIRES_AT:
         logger.info(
             'Backend expiration is enabled for %s (UTC). Remove BACKEND_EXPIRES_AT and restart to disable.',
@@ -940,17 +934,17 @@ async def on_start():
         )
     else:
         logger.info('Backend expiration is disabled (BACKEND_EXPIRES_AT is not set).')
-    try:
-        await client.admin.command('ping')
-    except Exception as exc:
-        logger.warning('MongoDB unavailable at %s; using local in-memory fallback. Error: %s', mongo_url, exc)
-        _use_mock_db()
+    if os.environ.get('VERCEL'):
+        logger.warning(
+            'SQLite is running at %s on Vercel. This local file is temporary and is not shared across function instances.',
+            db.path,
+        )
     await ensure_default_admin(db)
     logger.info('Default admin ensured (admin / admin@123)')
 
 @app.on_event('shutdown')
 async def shutdown_db_client():
-    client.close()
+    db.close()
 
 # Include router
 app.include_router(api)

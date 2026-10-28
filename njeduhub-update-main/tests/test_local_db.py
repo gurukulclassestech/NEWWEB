@@ -1,33 +1,50 @@
 import asyncio
 
-import pytest
-
 from backend.auth import ensure_default_admin
-from backend.server import LocalDatabase
+from backend.server import SQLiteDatabase, _validate_lecture_record
 
 
-@pytest.mark.asyncio
-async def test_local_database_supports_basic_crud():
-    db = LocalDatabase(prefix='test_local_db')
+def test_sqlite_database_supports_crud_and_persists_after_reopen(tmp_path):
+    database_path = tmp_path / 'test.sqlite3'
+    db = SQLiteDatabase(database_path, legacy_path=None)
     coll = db['admins']
 
-    await coll.insert_one({'username': 'admin', 'password_hash': 'abc'})
-    row = await coll.find_one({'username': 'admin'})
+    asyncio.run(coll.insert_one({'username': 'admin', 'password_hash': 'abc'}))
+    row = asyncio.run(coll.find_one({'username': 'admin'}))
 
     assert row is not None
     assert row['username'] == 'admin'
 
-    await coll.update_one({'username': 'admin'}, {'$set': {'password_hash': 'xyz'}})
-    updated = await coll.find_one({'username': 'admin'})
+    asyncio.run(coll.update_one({'username': 'admin'}, {'$set': {'password_hash': 'xyz'}}))
+    updated = asyncio.run(coll.find_one({'username': 'admin'}))
     assert updated['password_hash'] == 'xyz'
+    db.close()
 
-    await coll.delete_one({'username': 'admin'})
-    assert await coll.find_one({'username': 'admin'}) is None
+    reopened_db = SQLiteDatabase(database_path, legacy_path=None)
+    persisted = asyncio.run(reopened_db.admins.find_one({'username': 'admin'}))
+    assert persisted is not None
+    assert persisted['password_hash'] == 'xyz'
+
+    asyncio.run(reopened_db.admins.delete_one({'username': 'admin'}))
+    assert asyncio.run(reopened_db.admins.find_one({'username': 'admin'})) is None
+    reopened_db.close()
+
+
+def test_sqlite_database_imports_legacy_json_once(tmp_path):
+    legacy_path = tmp_path / 'legacy.json'
+    legacy_path.write_text(
+        '{"courses":[{"id":"course-1","title":"Imported course"}]}',
+        encoding='utf-8',
+    )
+    db = SQLiteDatabase(tmp_path / 'import.sqlite3', legacy_path=legacy_path)
+
+    imported = asyncio.run(db.courses.find_one({'id': 'course-1'}))
+
+    assert imported == {'id': 'course-1', 'title': 'Imported course'}
+    db.close()
 
 
 def test_lecture_record_validation_accepts_youtube_links():
-    from backend.server import _validate_lecture_record
-
     payload = {
         'title': 'Chemical Bonding Basics',
         'className': '11th',
@@ -45,30 +62,13 @@ def test_lecture_record_validation_accepts_youtube_links():
     assert result['videoId'] == 'dQw4w9WgXcQ'
 
 
-@pytest.mark.asyncio
-async def test_local_database_reuses_same_instance_per_prefix():
-    from backend.server import LocalMongoClient
+def test_ensure_default_admin_creates_admin_even_if_other_records_exist(tmp_path):
+    db = SQLiteDatabase(tmp_path / 'admin.sqlite3', legacy_path=None)
+    asyncio.run(db.admins.insert_one({'username': 'other-admin', 'password_hash': 'hash'}))
 
-    client = LocalMongoClient('gurukulclasses')
-    db_one = client['gurukulclasses']
-    db_two = client['gurukulclasses']
+    asyncio.run(ensure_default_admin(db))
 
-    assert db_one is db_two
-
-    await db_one.admins.insert_one({'username': 'persisted-admin', 'password_hash': 'hash'})
-    stored = await db_two.admins.find_one({'username': 'persisted-admin'})
-
-    assert stored is not None
-    assert stored['username'] == 'persisted-admin'
-
-
-@pytest.mark.asyncio
-async def test_ensure_default_admin_creates_default_user_even_if_db_has_other_records():
-    db = LocalDatabase(prefix='test_default_admin_seed')
-    await db.admins.insert_one({'username': 'other-admin', 'password_hash': 'hash'})
-
-    await ensure_default_admin(db)
-
-    stored = await db.admins.find_one({'username': 'admin'})
+    stored = asyncio.run(db.admins.find_one({'username': 'admin'}))
     assert stored is not None
     assert stored['username'] == 'admin'
+    db.close()

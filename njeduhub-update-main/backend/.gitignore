@@ -1,1 +1,2 @@
 .vercel
+local_db/*.sqlite3*

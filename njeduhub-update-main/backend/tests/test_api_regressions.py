@@ -7,10 +7,12 @@ import server
 
 
 @pytest.fixture
-def client(monkeypatch):
+def client(monkeypatch, tmp_path):
     monkeypatch.setenv('VERCEL', '1')
-    server._use_mock_db()
-    return TestClient(server.app)
+    database = server.SQLiteDatabase(tmp_path / 'api.sqlite3', legacy_path=None)
+    monkeypatch.setattr(server, 'db', database)
+    with TestClient(server.app) as test_client:
+        yield test_client
 
 
 def test_exam_list_orders_by_created_at_field(client):

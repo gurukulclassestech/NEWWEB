@@ -1,4 +1,4 @@
-# Seed initial mock data into MongoDB
+# Seed initial content into the database.
 import uuid
 from datetime import datetime
 

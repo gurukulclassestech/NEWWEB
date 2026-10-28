@@ -105,7 +105,7 @@
 user_problem_statement: |
   Build a full-stack coaching institute website inspired by iitpk.com — branded as "Gurukul Classes".
   Phase 1: Frontend with mock data (DONE).
-  Phase 2: FastAPI + MongoDB backend with admin panel at hidden URL /admin-x9k2 (no auth).
+  Phase 2: FastAPI + SQLite backend with admin panel at hidden URL /admin-x9k2 (no auth).
   Backend must expose CRUD for Courses, Faculty, Blogs, Testimonials, Toppers, Results, Gallery, News,
   and lead intake (Inquiry, Admission, Scholarship, Career) with status workflow + CSV export.
 
@@ -248,4 +248,3 @@ agent_communication:
         - Console shows only CDN RUM errors (external Cloudflare monitoring), no application errors
         
         All frontend tasks are now marked as working=true. Application is production-ready.
-
