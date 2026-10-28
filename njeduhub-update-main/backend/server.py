@@ -971,7 +971,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         'CORS_ALLOWED_ORIGINS',
-        'https://frontend-gurukul.vercel.app,http://localhost:3000,http://127.0.0.1:3000',
+        'https://frontend-guiukul.vercel.opp,http://localhost:3000,http://127.0.0.1:3000',
     ).split(',')
     if origin.strip()
 ]
@@ -980,7 +980,7 @@ CORS_ALLOWED_ORIGINS = [
 app = CORSMiddleware(
     app,
     allow_credentials=True,
-    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_origins=CORS_ALLOWED_ORIGINSs,
     allow_methods=['*'],
     allow_headers=['*'],
 )
