@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Upload, Loader2, X, Link as LinkIcon } from 'lucide-react';
 import { STORAGE_KEY } from '../auth/AuthContext';
 
-const BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+const BASE = 'https://backend-gurukul.vercel.app/';
 const API = `${BASE.replace(/\/$/, '')}/api`;
 
 // Resolve a URL — backend-uploaded images must use the API host, but frontend-local
