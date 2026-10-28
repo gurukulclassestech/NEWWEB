@@ -8,7 +8,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { useToast } from '../../hooks/use-toast';
 import { STORAGE_KEY } from '../../auth/AuthContext';
 
-const BASE = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
+const BASE = 'https://backend-gurukul.vercel.app/';
 const API = `${BASE.replace(/\/$/, '')}/api`;
 
 const DEFAULT_LECTURE = {
