@@ -23,7 +23,7 @@ const BrandLogo = () => {
 
   return (
     <img
-      src={resolveUrl(SITE.logo || '/gurukul-logo.svg')}
+      src={resolveUrl(SITE.logo || '/gurukul.png')}
       alt={SITE.name}
       onError={() => setFailed(true)}
       style={{ width: `${width}px`, height: `${height}px`, maxWidth: '100%' }}
