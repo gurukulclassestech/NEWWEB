@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File
-from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -8,7 +8,7 @@ import os, io, csv, logging, uuid, shutil, json, base64
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import parse_qs, urlparse
 
 try:
@@ -234,6 +234,36 @@ api = APIRouter(prefix='/api')
 
 logger = logging.getLogger('gurukulclasses')
 logging.basicConfig(level=logging.INFO)
+
+def _configured_expiration() -> Optional[datetime]:
+    value = os.environ.get('BACKEND_EXPIRES_AT', '').strip()
+    if not value:
+        return None
+    try:
+        expiration = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError as exc:
+        raise ValueError('BACKEND_EXPIRES_AT must be an ISO 8601 UTC timestamp') from exc
+    if expiration.tzinfo is None or expiration.utcoffset() is None:
+        raise ValueError('BACKEND_EXPIRES_AT must include a UTC timezone, such as Z')
+    return expiration.astimezone(timezone.utc)
+
+
+BACKEND_EXPIRES_AT = _configured_expiration()
+
+@app.middleware('http')
+async def enforce_backend_expiration(request, call_next):
+    if BACKEND_EXPIRES_AT and datetime.now(timezone.utc) >= BACKEND_EXPIRES_AT:
+        return JSONResponse(
+            status_code=503,
+            content={
+                'detail': (
+                    'Backend service expired at '
+                    f'{BACKEND_EXPIRES_AT.isoformat()}. Remove BACKEND_EXPIRES_AT and restart '
+                    'the backend to disable this expiration.'
+                )
+            },
+        )
+    return await call_next(request)
 
 # ---------- Helpers ----------
 def now_iso() -> str:
@@ -903,6 +933,13 @@ async def seed_public():
 @app.on_event('startup')
 async def on_start():
     global client, db
+    if BACKEND_EXPIRES_AT:
+        logger.info(
+            'Backend expiration is enabled for %s (UTC). Remove BACKEND_EXPIRES_AT and restart to disable.',
+            BACKEND_EXPIRES_AT.isoformat(),
+        )
+    else:
+        logger.info('Backend expiration is disabled (BACKEND_EXPIRES_AT is not set).')
     try:
         await client.admin.command('ping')
     except Exception as exc:
