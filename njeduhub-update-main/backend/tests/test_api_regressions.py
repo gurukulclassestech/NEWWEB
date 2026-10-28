@@ -7,7 +7,8 @@ import server
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    monkeypatch.setenv('VERCEL', '1')
     server._use_mock_db()
     return TestClient(server.app)
 
@@ -58,3 +59,36 @@ def test_default_admin_login_works(client):
     payload = response.json()
     assert payload['username'] == 'admin'
     assert payload['token']
+
+
+def test_upload_preflight_and_image_round_trip(client):
+    origin = 'https://frontend-gurukul.vercel.app'
+    preflight = client.options(
+        '/api/upload',
+        headers={
+            'Origin': origin,
+            'Access-Control-Request-Method': 'POST',
+            'Access-Control-Request-Headers': 'authorization,content-type',
+        },
+    )
+    assert preflight.status_code == 200
+    assert preflight.headers['access-control-allow-origin'] == origin
+
+    login = client.post('/api/admin/login', json={'username': 'admin', 'password': 'admin@123'})
+    assert login.status_code == 200
+    image = b'\x89PNG\r\n\x1a\nupload-test'
+    upload = client.post(
+        '/api/upload',
+        headers={'Origin': origin, 'Authorization': f"Bearer {login.json()['token']}"},
+        files={'file': ('test.png', image, 'image/png')},
+    )
+    assert upload.status_code == 200
+    assert upload.headers['access-control-allow-origin'] == origin
+
+    image_response = client.get(upload.json()['url'], headers={'Origin': origin})
+    assert image_response.status_code == 200
+    assert image_response.content == image
+    assert image_response.headers['content-type'] == 'image/png'
+    assert image_response.headers['access-control-allow-origin'] == origin
+
+    asyncio.run(server.db.uploads.delete_one({'filename': upload.json()['filename']}))

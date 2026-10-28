@@ -35,7 +35,6 @@ const ImageUploadField = ({ value, onChange, label = 'Image', placeholder = 'Pas
       fd.append('file', file);
       const { data } = await axios.post(`${API}/upload`, fd, {
         headers: {
-          'Content-Type': 'multipart/form-data',
           Authorization: auth?.token ? `Bearer ${auth.token}` : '',
         },
       });

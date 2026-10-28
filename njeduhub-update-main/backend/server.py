@@ -1,10 +1,10 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-import os, io, csv, logging, uuid, shutil, json
+import os, io, csv, logging, uuid, shutil, json, base64
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
@@ -503,10 +503,31 @@ async def upload_image(file: UploadFile = File(...), _: str = Depends(require_ad
     if len(ext) > 8 or not ext.isalnum():
         ext = 'jpg'
     fname = f'{uuid.uuid4().hex}.{ext}'
-    fpath = UPLOAD_DIR / fname
-    with open(fpath, 'wb') as f:
-        f.write(contents)
+    await db.uploads.insert_one({
+        'filename': fname,
+        'content_type': file.content_type,
+        'data': base64.b64encode(contents).decode('ascii'),
+        'size': len(contents),
+    })
     return {'url': f'/api/uploads/{fname}', 'filename': fname, 'size': len(contents)}
+
+@api.get('/uploads/{filename}')
+async def get_uploaded_image(filename: str):
+    """Serve uploaded images from persistent storage, with local-file compatibility."""
+    if Path(filename).name != filename:
+        raise HTTPException(status_code=404, detail='Image not found')
+    upload = await db.uploads.find_one({'filename': filename})
+    if upload:
+        return Response(
+            content=base64.b64decode(upload['data']),
+            media_type=upload['content_type'],
+            headers={'Cache-Control': 'public, max-age=31536000, immutable'},
+        )
+
+    local_path = UPLOAD_DIR / filename
+    if local_path.is_file():
+        return FileResponse(local_path)
+    raise HTTPException(status_code=404, detail='Image not found')
 
 def _validate_exam_record(payload: dict) -> dict:
     data = dict(payload or {})
@@ -946,10 +967,20 @@ async def backend_home():
 # Mount static files for uploaded images (must be after router include so /api/uploads/* resolves)
 app.mount('/api/uploads', StaticFiles(directory=str(UPLOAD_DIR)), name='uploads')
 
-app.add_middleware(
-    CORSMiddleware,
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        'CORS_ALLOWED_ORIGINS',
+        'https://frontend-gurukul.vercel.app,http://localhost:3000,http://127.0.0.1:3000',
+    ).split(',')
+    if origin.strip()
+]
+
+# Wrap the entire app so even unhandled server errors include CORS headers.
+app = CORSMiddleware(
+    app,
     allow_credentials=True,
-    allow_origins=['*'],
+    allow_origins=CORS_ALLOWED_ORIGINS,
     allow_methods=['*'],
     allow_headers=['*'],
 )
